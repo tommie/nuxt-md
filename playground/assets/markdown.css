@@ -1,0 +1,72 @@
+:root {
+  --content-padding: 1rem;
+  --surface-card: #f8f8f8;
+  --surface-border: #eeeeff;
+  --border-radius: 8px;
+  --primary-500: #9999dd;
+  --primary-600: #aaaae8;
+  --primary-700: #bbbbee;
+}
+
+h2 {
+  background-color: #bee;
+  border-bottom-right-radius: 5rem;
+  margin: var(--content-padding) calc(-1 * var(--content-padding));
+  padding: var(--content-padding);
+}
+
+* + h2 {
+  margin-top: 4rem;
+}
+
+dd + dt {
+  margin-top: 1rem;
+}
+
+pre.shiki {
+  margin: var(--content-padding) calc(-1 * var(--content-padding));
+  padding: var(--content-padding);
+  border-top: 1px solid var(--primary-500);
+  border-bottom: 1px solid var(--primary-500);
+  overflow-x: auto;
+}
+
+pre.shiki:hover {
+  box-shadow: -4px 0 8px var(--primary-600);
+}
+
+pre.shiki > code > *:last-child::after {
+  content: " ";
+}
+
+pre.shiki:hover > code > *:last-child::after {
+  content: "█";
+  color: var(--primary-600);
+  animation: blink infinite 1.2s step-end;
+}
+
+@keyframes blink {
+  from,
+  to {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.directive-div {
+  margin: var(--content-padding) calc(3 * var(--content-padding));
+  padding: var(--content-padding);
+  border-radius: var(--border-radius);
+  border-left: 4px solid var(--surface-border);
+  border-right: 4px solid var(--surface-border);
+  border-top: 1px solid var(--surface-border);
+  border-bottom: 1px solid var(--surface-border);
+  background-color: var(--surface-card);
+}
+
+.directive-example {
+  border-left-color: #3366bb;
+}
