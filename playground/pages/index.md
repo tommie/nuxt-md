@@ -27,7 +27,7 @@ remarkEscapeDoubleBraces
 : parses `{.font-ultrabold}{target=_blank}` and similar syntax for adding HTML attributes.
 
 remarkYamlFrontMatter
-: a custom plugin that parse the extracted frontmatter as YAML.
+: a custom plugin that parses the extracted frontmatter as YAML.
 
 remarkHeadingData
 : a custom plugin that extracts the first `<h1>`&ndash;`<h6>` of the page (if it is the first node) for use as the default page title.
