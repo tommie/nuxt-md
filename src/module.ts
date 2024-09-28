@@ -1,20 +1,45 @@
+import type { Root as HASTRoot } from "hast";
+import type { Root as ASTRoot } from "mdast";
 import { read } from "to-vfile";
 import { join, resolve } from "pathe";
 import { addVitePlugin, defineNuxtModule, updateTemplates } from "@nuxt/kit";
 import type { ComponentsOptions } from "@nuxt/schema";
 import { createFilter } from "@rollup/pluginutils";
 import { createHighlighter } from "shiki";
+import { type Plugin } from "unified";
 import type { Data as VFileData } from "vfile";
 import type { Update as HMRUpdate } from "vite/types/hmrPayload";
 
-import { type HtmlOptions, markdownToHtmlFragment, type VFileWithMeta } from "./markdown/html";
+import { markdownToHtmlFragment } from "./markdown/html";
+import type { HtmlOptions, RehypePlugin, RehypePluginConfig, RemarkPlugin, RemarkPluginConfig, VFileWithMeta } from "./markdown/html";
 
 export type MDPagesOptions = Omit<HtmlOptions, "rootPath"> & {
   shikiOptions?: Exclude<Parameters<typeof createHighlighter>[0], undefined>,
   dir?: {
+    // The directory to look for included Markdown files in. Defaults
+    // to `components`.
     markdown?: string,
   },
+  plugins?: {
+    // Additional plugins to process Markdown with Remark, before it's
+    // translated to HTML.
+    remark?: MDPagesRemarkPluginConfig[],
+
+    // Additional plugins to process HTML with Rehype, after
+    // translation from Markdown.
+    rehype?: MDPagesRehypePluginConfig[],
+  },
 };
+
+export type MDPagesRehypePluginConfig<Args extends any[] = any[]> = string | RehypePlugin<Args> | (Omit<RehypePluginConfig<Args>, "plugin" | "args"> & {
+  plugin: string | RehypePluginConfig<Args>["plugin"],
+  args?: RehypePluginConfig<Args>["args"],
+});
+
+export type MDPagesRemarkPluginConfig<Args extends any[] = any[]> = string | RemarkPlugin<Args> | (Omit<RemarkPluginConfig<Args>, "plugin" | "args"> & {
+  plugin: string | RemarkPluginConfig<Args>["plugin"],
+  args?: RemarkPluginConfig<Args>["args"],
+});
 
 export default defineNuxtModule({
   meta: {
@@ -78,6 +103,10 @@ export default defineNuxtModule({
     const shikiTheme = options.shikiTheme ?? options.shikiOptions?.themes[0];
     delete options.shikiOptions;
 
+    const rehypePlugins = await loadRehypePlugins(options.plugins?.rehype ?? []);
+    const remarkPlugins = await loadRemarkPlugins(options.plugins?.remark ?? []);
+    delete options.plugins;
+
     const resolvedPagesDir = resolve(nuxt.options.srcDir, pagesDir);
     addVitePlugin(() => {
       const filter = createFilter([new RegExp(markdownRE + "(\\?|$)")]);
@@ -114,6 +143,9 @@ export default defineNuxtModule({
             shikiTheme,
             ...options,
             rootPath: resolvedPagesDir,
+
+            rehypePlugins,
+            remarkPlugins,
           });
 
           return {
@@ -125,6 +157,58 @@ export default defineNuxtModule({
     });
   },
 });
+
+async function loadRehypePlugins(plugins: MDPagesRehypePluginConfig[]): Promise<RehypePluginConfig[]> {
+  return Promise.all(plugins.map(async (plugin) => {
+    if (typeof plugin === "string") {
+      const imp = await import(plugin);
+
+      return {
+        plugin: imp as Plugin<any[], HASTRoot, void>,
+        args: [],
+        name: plugin,
+      };
+    } else if ("plugin" in plugin) {
+      return {
+        args: [],
+        ...plugin,
+        plugin: typeof plugin.plugin === "string" ? await import(plugin.plugin) as Plugin<any[], HASTRoot, void> : plugin.plugin,
+        name: typeof plugin.plugin === "string" ? plugin.plugin : undefined,
+      };
+    } else {
+      return {
+        plugin,
+        args: [],
+      };
+    }
+  }));
+}
+
+async function loadRemarkPlugins(plugins: MDPagesRemarkPluginConfig[]): Promise<RemarkPluginConfig[]> {
+  return Promise.all(plugins.map(async (plugin) => {
+    if (typeof plugin === "string") {
+      const imp = await import(plugin);
+
+      return {
+        plugin: imp as Plugin<any[], ASTRoot, void>,
+        args: [],
+        name: plugin,
+      };
+    } else if ("plugin" in plugin) {
+      return {
+        args: [],
+        ...plugin,
+        plugin: typeof plugin.plugin === "string" ? await import(plugin.plugin) as Plugin<any[], ASTRoot, void> : plugin.plugin,
+        name: typeof plugin.plugin === "string" ? plugin.plugin : undefined,
+      };
+    } else {
+      return {
+        plugin,
+        args: [],
+      };
+    }
+  }));
+}
 
 function htmlFragmentToVueSfc(html: VFileWithMeta, isPage: boolean) {
   const imports = importsFromVFile(html);
