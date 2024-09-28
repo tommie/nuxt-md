@@ -57,6 +57,9 @@ export interface PluginConfig<Args extends any[], AST extends Node> {
   after?: string[],
 }
 
+export type RehypePlugin<Args extends any[]> = Plugin<Args, HASTRoot>;
+export type RemarkPlugin<Args extends any[]> = Plugin<Args, ASTRoot>;
+
 export type RehypePluginConfig<Args extends any[] = any[]> = PluginConfig<Args, HASTRoot>;
 export type RemarkPluginConfig<Args extends any[] = any[]> = PluginConfig<Args, ASTRoot>;
 
@@ -67,109 +70,117 @@ export interface VFileWithMeta extends VFile {
   };
 }
 
-export async function markdownToHtmlFragment(file: VFile, options: HtmlOptions) {
-  const markPlugins: PluginConfig<any[], ASTRoot>[] = [
-    { plugin: remarkFrontmatter, args: [], name: "remark-frontmatter" },
-    { plugin: remarkInclude, args: [], name: "remark-include" },
-    { plugin: remarkDirective, args: [], name: "remark-directive", after: ["remark-include"] },
-    { plugin: remarkDirectiveRenderer, args: [options?.directiveRenderer], name: "mark-directive-renderer", after: ["remark-directive"] },
-    { plugin: escapeDoubleBraces, args: [], name: "mark-escape-double-braces" },
-    // @ts-expect-error
-    { plugin: remarkAttributes, args: [{ mdx: true }], name: "remark-attributes" },
-    { plugin: yamlFrontmatter, args: [], name: "mark-yaml-frontmatter", after: ["remark-frontmatter"] },
-    { plugin: headingData, args: [], name: "mark-heading-data" },
-    { plugin: remarkDefinitionList, args: [], name: "remark-definition-list" },
-    { plugin: remarkGFM, args: [], name: "remark-gfm" },
+export class MarkdownToHtmlRenderer {
+  private readonly proc: Processor<ASTRoot, ASTRoot, HASTRoot, undefined, undefined>;
 
-    ...options.remarkPlugins.map((plugin, i) => ({
-      ...plugin,
-      name: plugin.name ?? `_mark${i}`,
-    })),
-  ];
+  constructor(options: HtmlOptions) {
+    const markPlugins: PluginConfig<any[], ASTRoot>[] = [
+      { plugin: remarkFrontmatter, args: [], name: "remark-frontmatter" },
+      { plugin: remarkInclude, args: [], name: "remark-include" },
+      { plugin: remarkDirective, args: [], name: "remark-directive", after: ["remark-include"] },
+      { plugin: remarkDirectiveRenderer, args: [options?.directiveRenderer], name: "mark-directive-renderer", after: ["remark-directive"] },
+      { plugin: escapeDoubleBraces, args: [], name: "mark-escape-double-braces" },
+      // @ts-expect-error
+      { plugin: remarkAttributes, args: [{ mdx: true }], name: "remark-attributes" },
+      { plugin: yamlFrontmatter, args: [], name: "mark-yaml-frontmatter", after: ["remark-frontmatter"] },
+      { plugin: headingData, args: [], name: "mark-heading-data" },
+      { plugin: remarkDefinitionList, args: [], name: "remark-definition-list" },
+      { plugin: remarkGFM, args: [], name: "remark-gfm" },
 
-  markPlugins.push({
-    plugin: remarkRehype,
-    args: [{
-      allowDangerousHtml: options.allowDangerousHtml,
-      handlers: {
-        ...defListHastHandlers,
-      },
-    }],
-    name: "remark-rehype",
-    after: markPlugins.map(plugin => plugin.name),
-  });
+      ...options.remarkPlugins.map((plugin, i) => ({
+        ...plugin,
+        name: plugin.name ?? `_mark${i}`,
+      })),
+    ];
 
-  const hypePlugins: PluginConfig<any[], HASTRoot>[] = [
-    ...options.shikiHighlighter ? [{
-      plugin: rehypeVueShiki,
-      name: "hype-vue-shiki",
-      args: [
-        options.shikiHighlighter,
-        { theme: options.shikiTheme },
-      ],
-      before: ["rehype-raw"],
-    }] : [],
-
-    // rehype-raw lowercases tag names. Always and forever.
-    // See https://github.com/inikulin/parse5/issues/116,
-    // https://github.com/inikulin/parse5/issues/214.
-    { plugin: rehypeRaw, args: [], name: "rehype-raw" },
-
-    ...options.shikiHighlighter ? [{
-      plugin: rehypeVueShiki.afterRaw,
-      args: [],
-      name: "hype-vue-shiki-after-raw",
-    }] : [],
-
-    ...options.remarkPlugins.map((plugin, i) => ({
-      ...plugin,
-      name: plugin.name ?? `_hype${i}`,
-    })),
-
-    {
-      plugin: rehypeUnparagraph,
+    markPlugins.push({
+      plugin: remarkRehype,
       args: [{
-        removeEmpty: true,
-        unwrapTags: ["img", ".*-.*"],
+        allowDangerousHtml: options.allowDangerousHtml,
+        handlers: {
+          ...defListHastHandlers,
+        },
       }],
-      name: "hype-unparagraph",
-      after: ["rehype-raw"],
-    },
+      name: "remark-rehype",
+      after: markPlugins.map(plugin => plugin.name),
+    });
 
-    { plugin: rehypeSlug, args: [], name: "rehype-slug", after: ["rehype-raw"] },
+    const hypePlugins: PluginConfig<any[], HASTRoot>[] = [
+      ...options.shikiHighlighter ? [{
+        plugin: rehypeVueShiki,
+        name: "hype-vue-shiki",
+        args: [
+          options.shikiHighlighter,
+          { theme: options.shikiTheme },
+        ],
+        before: ["rehype-raw"],
+      }] : [],
 
-    ...options.linkComponent !== "a" ? [{
-      plugin: routerLink,
-      args: [options.linkComponent ?? "nuxt-link", { rootPath: options.rootPath ?? "/" }],
-      name: "hype-router-link",
-    }] : [],
-  ];
+      // rehype-raw lowercases tag names. Always and forever.
+      // See https://github.com/inikulin/parse5/issues/116,
+      // https://github.com/inikulin/parse5/issues/214.
+      { plugin: rehypeRaw, args: [], name: "rehype-raw" },
 
-  hypePlugins.push({
-    plugin: rehypeStringify,
-    args: [{
-      allowDangerousHtml: options.allowDangerousHtml,
-    }],
-    name: "rehype-stringify",
-    after: hypePlugins.map(plugin => plugin.name),
-  });
+      ...options.shikiHighlighter ? [{
+        plugin: rehypeVueShiki.afterRaw,
+        args: [],
+        name: "hype-vue-shiki-after-raw",
+      }] : [],
 
-  topoSort(markPlugins);
-  topoSort(hypePlugins);
+      ...options.remarkPlugins.map((plugin, i) => ({
+        ...plugin,
+        name: plugin.name ?? `_hype${i}`,
+      })),
 
-  let mdproc = unified().use(remarkParse);
+      {
+        plugin: rehypeUnparagraph,
+        args: [{
+          removeEmpty: true,
+          unwrapTags: ["img", ".*-.*"],
+        }],
+        name: "hype-unparagraph",
+        after: ["rehype-raw"],
+      },
 
-  for (const config of markPlugins) {
-    mdproc = mdproc.use(config.plugin, ...config.args);
+      { plugin: rehypeSlug, args: [], name: "rehype-slug", after: ["rehype-raw"] },
+
+      ...options.linkComponent !== "a" ? [{
+        plugin: routerLink,
+        args: [options.linkComponent ?? "nuxt-link", { rootPath: options.rootPath ?? "/" }],
+        name: "hype-router-link",
+      }] : [],
+    ];
+
+    hypePlugins.push({
+      plugin: rehypeStringify,
+      args: [{
+        allowDangerousHtml: options.allowDangerousHtml,
+      }],
+      name: "rehype-stringify",
+      after: hypePlugins.map(plugin => plugin.name),
+    });
+
+    topoSort(markPlugins);
+    topoSort(hypePlugins);
+
+    let mdproc = unified().use(remarkParse);
+
+    for (const config of markPlugins) {
+      mdproc = mdproc.use(config.plugin, ...config.args);
+    }
+
+    let hproc = mdproc as Processor<ASTRoot, ASTRoot, HASTRoot, undefined, undefined>;
+
+    for (const config of hypePlugins) {
+      hproc = hproc.use(config.plugin, ...config.args);
+    }
+
+    this.proc = hproc;
   }
 
-  let hproc = mdproc as Processor<HASTRoot, HASTRoot, HASTRoot, undefined, undefined>;
-
-  for (const config of hypePlugins) {
-    hproc = hproc.use(config.plugin, ...config.args);
+  public async renderMarkdown(file: VFile) {
+    return (await this.proc.process(file)) as VFileWithMeta;
   }
-
-  return (await hproc.process(file)) as VFileWithMeta;
 }
 
 /// Escapes the Vue {{ }} braces. There is no nice way to escape "{{"

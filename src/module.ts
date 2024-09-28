@@ -10,7 +10,7 @@ import { type Plugin } from "unified";
 import type { Data as VFileData } from "vfile";
 import type { Update as HMRUpdate } from "vite/types/hmrPayload";
 
-import { markdownToHtmlFragment } from "./markdown/html";
+import { MarkdownToHtmlRenderer } from "./markdown/html";
 import type { HtmlOptions, RehypePlugin, RehypePluginConfig, RemarkPlugin, RemarkPluginConfig, VFileWithMeta } from "./markdown/html";
 
 export type MDPagesOptions = Omit<HtmlOptions, "rootPath"> & {
@@ -108,6 +108,15 @@ export default defineNuxtModule({
     delete options.plugins;
 
     const resolvedPagesDir = resolve(nuxt.options.srcDir, pagesDir);
+    const renderer = new MarkdownToHtmlRenderer({
+      shikiHighlighter,
+      shikiTheme,
+      ...options,
+      rootPath: resolvedPagesDir,
+
+      rehypePlugins,
+      remarkPlugins,
+    });
     addVitePlugin(() => {
       const filter = createFilter([new RegExp(markdownRE + "(\\?|$)")]);
 
@@ -136,20 +145,10 @@ export default defineNuxtModule({
           if (!filter(id)) return;
 
           const path = id.replace(/\?.*/, "");
-          const isPage = pre.test(path);
-          const md = await read(path, "utf-8");
-          const html = await markdownToHtmlFragment(md, {
-            shikiHighlighter,
-            shikiTheme,
-            ...options,
-            rootPath: resolvedPagesDir,
-
-            rehypePlugins,
-            remarkPlugins,
-          });
+          const html = await renderer.renderMarkdown(await read(path, "utf-8"));
 
           return {
-            code: htmlFragmentToVueSfc(html, isPage),
+            code: htmlFragmentToVueSfc(html, /*isPage=*/ pre.test(path)),
             map: { mappings: "" },
           };
         },
