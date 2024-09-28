@@ -35,13 +35,14 @@ export function remarkDirectiveRenderer(options?: RemarkDirectiveRendererOptions
 
       if (opts.names.test(node.name)) {
         const tagName = node.type === "textDirective" ? "span" : "div";
+        const dirType = node.type === "textDirective" ? "inline" : "block";
 
         node.data ??= {};
         node.data.hName = tagName;
 
         const props = h(tagName, node.attributes ?? undefined).properties ?? {};
         props.className ||= [];
-        (props.className as string[]).push(opts.classPrefix + tagName);
+        (props.className as string[]).push(opts.classPrefix + dirType);
         (props.className as string[]).push(opts.classPrefix + node.name);
         node.data.hProperties = props;
 

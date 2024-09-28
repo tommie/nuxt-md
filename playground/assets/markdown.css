@@ -56,7 +56,7 @@ pre.shiki:hover > code > *:last-child::after {
   }
 }
 
-.directive-div {
+.directive-block {
   margin: var(--content-padding) calc(3 * var(--content-padding));
   padding: var(--content-padding);
   border-radius: var(--border-radius);
