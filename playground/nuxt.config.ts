@@ -7,7 +7,7 @@ export default defineNuxtConfig({
     allowDangerousHtml: true,
     shikiOptions: {
       themes: ['vitesse-light'],
-      langs: ['html'],
+      langs: ['html', 'markdown'],
     },
   },
 })

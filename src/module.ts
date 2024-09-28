@@ -4,12 +4,16 @@ import { addVitePlugin, defineNuxtModule, updateTemplates } from "@nuxt/kit";
 import type { ComponentsOptions } from "@nuxt/schema";
 import { createFilter } from "@rollup/pluginutils";
 import { createHighlighter } from "shiki";
+import type { Data as VFileData } from "vfile";
 import type { Update as HMRUpdate } from "vite/types/hmrPayload";
 
 import { type HtmlOptions, markdownToHtmlFragment, type VFileWithMeta } from "./markdown/html";
 
 export type MDPagesOptions = Omit<HtmlOptions, "rootPath"> & {
   shikiOptions?: Exclude<Parameters<typeof createHighlighter>[0], undefined>,
+  dir?: {
+    markdown?: string,
+  },
 };
 
 export default defineNuxtModule({
@@ -29,20 +33,22 @@ export default defineNuxtModule({
             dirs: undefined as unknown as string[],
             global: !Array.isArray(nuxt.options.components) ? nuxt.options.components : undefined,
           };
-    copts.transform ||= {};
-    copts.transform.include ||= [];
+    copts.transform ??= {};
+    copts.transform.include ??= [];
     nuxt.options.components = copts;
 
     const pagesDir = nuxt.options.dir.pages ?? "pages";
     const pagesRE = "(^|/)" + join(pagesDir, ".*") + "\\.md";
-    copts.transform.include.push(new RegExp(pagesRE + "$"));
+    const componentsDir = options.dir?.markdown ?? "components";
+    const markdownRE = `(^|/)(${pagesDir}|${componentsDir})/.*\\.md`;
+    copts.transform.include.push(new RegExp(markdownRE + "$"));
 
-    nuxt.options.imports.transform ||= {};
-    nuxt.options.imports.transform.include ||= [];
-    nuxt.options.imports.transform.include.push(new RegExp(pagesRE + "$"));
+    nuxt.options.imports.transform ??= {};
+    nuxt.options.imports.transform.include ??= [];
+    nuxt.options.imports.transform.include.push(new RegExp(markdownRE + "$"));
 
     nuxt.hook("vite:extendConfig", (config) => {
-      config.vue ||= {};
+      config.vue ??= {};
 
       let include = Array.isArray(config.vue.include) ? [...config.vue.include] : [];
       if (!config.vue.include) {
@@ -51,7 +57,7 @@ export default defineNuxtModule({
       } else if (!Array.isArray(config.vue.include)) {
         include.push(config.vue.include);
       }
-      const pre = new RegExp(pagesRE + "$");
+      const pre = new RegExp(markdownRE + "$");
       if (!include.map(String).includes(pre.toString())) {
         include.push(pre);
       }
@@ -74,7 +80,7 @@ export default defineNuxtModule({
 
     const resolvedPagesDir = resolve(nuxt.options.srcDir, pagesDir);
     addVitePlugin(() => {
-      const filter = createFilter([new RegExp(pagesRE + "$"), new RegExp(pagesRE + "\\?")]);
+      const filter = createFilter([new RegExp(markdownRE + "(\\?|$)")]);
 
       return {
         name: "itergia:vite-plugin-remark-vue",
@@ -101,6 +107,7 @@ export default defineNuxtModule({
           if (!filter(id)) return;
 
           const path = id.replace(/\?.*/, "");
+          const isPage = pre.test(path);
           const md = await read(path, "utf-8");
           const html = await markdownToHtmlFragment(md, {
             shikiHighlighter,
@@ -110,7 +117,7 @@ export default defineNuxtModule({
           });
 
           return {
-            code: htmlFragmentToVueSfc(html),
+            code: htmlFragmentToVueSfc(html, isPage),
             map: { mappings: "" },
           };
         },
@@ -119,7 +126,8 @@ export default defineNuxtModule({
   },
 });
 
-function htmlFragmentToVueSfc(html: VFileWithMeta) {
+function htmlFragmentToVueSfc(html: VFileWithMeta, isPage: boolean) {
+  const imports = importsFromVFile(html);
   const meta = pageMetaFromVFile(html);
   const head = Object.fromEntries(
     [["title", meta.title ?? meta.headingTitle], ...Object.entries(meta.head ?? {})].filter(
@@ -129,12 +137,17 @@ function htmlFragmentToVueSfc(html: VFileWithMeta) {
 
   delete meta.head;
 
+  const headScript = !isPage ? "" : (
+    `import { useHead } from "@unhead/vue";\n` +
+    `definePageMeta(${JSON.stringify(meta)});\n` +
+    `useHead(${JSON.stringify(head)});\n`
+  );
+
   // Wrap all content in a div to make it a well-behaved Vue component.
   return (
     `<script setup lang="ts">\n` +
-    `import { useHead } from "@unhead/vue";\n` +
-    `definePageMeta(${JSON.stringify(meta)});\n` +
-    `useHead(${JSON.stringify(head)});\n` +
+    imports +
+    headScript +
     "</script>\n" +
     "<template>\n" +
     "<div>\n" +
@@ -142,6 +155,20 @@ function htmlFragmentToVueSfc(html: VFileWithMeta) {
     "</div>\n" +
     "</template>\n"
   );
+}
+
+// Vue is not very specific about valid component names, but they must
+// start with a capital letter, unless they're using the hyphenated
+// form (which Nuxt doesn't do.):
+//
+// https://github.com/vuejs/core/blob/29de6f8b0bb1a604f247b0712daac29e93aa6f3e/packages/compiler-core/src/parser.ts#L780
+const COMPONENT_NAME_RE = /^[A-Z]\w+$/;
+
+function importsFromVFile(file: VFileWithMeta & { data: VFileData & { imports?: { path: string, name: string }[] } }) {
+  // If there is no slash in the path, we rely on Nuxt auto importing.
+  return (file.data.imports ?? [])
+    .filter(imp => !COMPONENT_NAME_RE.test(imp.path))
+    .map(imp => `import ${imp.name} from "${imp.path}";\n`).join("");
 }
 
 function pageMetaFromVFile(file: VFileWithMeta) {

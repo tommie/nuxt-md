@@ -104,7 +104,7 @@ export async function markdownToHtmlFragment(file: VFile, options: HtmlOptions) 
 /// Escapes the Vue {{ }} braces. There is no nice way to escape "{{"
 /// in Markdown, so we just disallow them. Use v-text instead.
 function escapeDoubleBraces() {
-  return (tree: ASTRoot, file: VFile & { data: VFileData & { matter?: Record<string, any> } }) => {
+  return (tree: ASTRoot) => {
     visit(tree, null, (node) => {
       if ("value" in node && node.value.includes("{{")) {
         node.value = node.value.replace(/\{\{/g, "{{'{{'}}");

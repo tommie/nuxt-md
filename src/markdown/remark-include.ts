@@ -1,42 +1,44 @@
 import type { Parent, Root } from "mdast";
 import { toString as mdToString } from "mdast-util-to-string";
-import { dirname, join } from "pathe";
+import { basename, dirname, join } from "pathe";
 import type { LeafDirective } from "mdast-util-directive";
-import { read } from "to-vfile";
-import { type Plugin, type Processor, unified } from "unified";
+import { type Processor } from "unified";
 import { visit } from "unist-util-visit";
-import type { VFile } from "vfile";
+import type { VFile, VFileData } from "vfile";
+import { camelize, capitalize, hyphenate } from "@vue/shared";
 
-/// Injects file content for leaf directive "::include[path]".
+/// Translates leaf directives "::include[path]" into Vue components and imports.
 export function remarkInclude(this: Processor) {
-  const parser = this.parser;
-  const proc = unified()
-    .use(function () {
-      this.parser = parser;
-    } as Plugin<[], string, Root>)
-    .use(remarkInclude);
-
-  return async (tree: Root, file: VFile) => {
-    const cwd = dirname(file.path);
-    const dirs: Promise<void>[] = [];
+  return async (tree: Root, file: VFile & { data: VFileData & { imports?: {path: string, name: string}[] } }) => {
+    const files: {path: string, name: string}[] = [];
 
     visit(tree, "leafDirective", (node: LeafDirective, index, parent) => {
       if (node.name !== "include") return;
 
-      dirs.push(include(node, index, parent));
+      files.push(include(node, index, parent));
     });
 
-    async function include(node: LeafDirective, index: number, parent: Parent) {
-      const incFile = await read(join(cwd, mdToString(node)));
-
-      const tree = proc.parse(incFile);
-      if (tree.type !== "root") {
-        throw new Error(`Expected a root node from remarkParse: ${tree.type}`);
-      }
-      await proc.run(tree, incFile);
-      parent.children.splice(index, 1, ...tree.children);
+    if (files.length) {
+      file.data.imports ??= [];
+      file.data.imports.push(...files);
     }
 
-    await Promise.all(dirs);
+    function include(node: LeafDirective, index: number, parent: Parent) {
+      const path = mdToString(node);
+      const name = basename(path).split(".")[0]
+      // rehype-raw lower-cases all tag names, so we have to use the
+      // hyphenated names in HTML.
+      const elName = hyphenate(name);
+
+      parent.children.splice(index, 1, {
+        type: "html",
+        value: `<${elName}></${elName}>`,
+      });
+
+      return {
+        path,
+        name: capitalize(camelize(name)),
+      };
+    }
   };
 }
