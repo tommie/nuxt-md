@@ -79,9 +79,9 @@ Oh no!
 They are turned into `<div class="directive-block directive-example">`.
 
 Similarly, the `:include[MyIncluded]` is an example of an inline directive.
-If they weren't treated specially, they would be turned into `<span class="directive-inline directive-include">`.
+If it wasn't treated specially, it would be turned into `<span class="directive-inline directive-include">`.
 
-Nuxt MD doesn't define any CSS classes, but this playground contains examples, used for the examples.
+Nuxt MD doesn't define any CSS classes, but this playground contains examples of directives, used for the examples.
 
 ## Vue Templating
 
@@ -108,3 +108,4 @@ Using `v-bind` and colon syntax for attributes works as expected:
 :::
 
 Normally, you'd wrap any complicated widgets and logic into a `components/*.vue` and use that.
+Remember that using Markdown is for increased readability, not a quirky way to make your Nuxt code special!
