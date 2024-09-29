@@ -242,7 +242,7 @@ function htmlFragmentToVueSfc(html: VFileWithMeta, isPage: boolean) {
 
 // Vue is not very specific about valid component names, but they must
 // start with a capital letter, unless they're using the hyphenated
-// form (which Nuxt doesn't do.):
+// form (which Nuxt doesn't do):
 //
 // https://github.com/vuejs/core/blob/29de6f8b0bb1a604f247b0712daac29e93aa6f3e/packages/compiler-core/src/parser.ts#L780
 const COMPONENT_NAME_RE = /^[A-Z]\w+$/;

@@ -19,6 +19,17 @@ h2 {
   margin-top: 4rem;
 }
 
+h3 {
+  border-bottom: 3px solid #bee;
+  border-bottom-right-radius: 5rem;
+  margin: var(--content-padding) calc(-1 * var(--content-padding));
+  padding: 0 var(--content-padding);
+}
+
+* + h3 {
+  margin-top: 2rem;
+}
+
 dd + dt {
   margin-top: 1rem;
 }

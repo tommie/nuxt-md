@@ -2,14 +2,10 @@ import type { Root as HASTRoot } from "hast";
 import type { Root as ASTRoot } from "mdast";
 import { toString as mdToString } from "mdast-util-to-string";
 import { basename, dirname, extname, relative, resolve } from "pathe";
-import remarkDirective from "remark-directive";
 import rehypeRaw from "rehype-raw";
-import rehypeSlug from "rehype-slug";
 import rehypeStringify from "rehype-stringify";
-import remarkAttributes from "remark-attributes";
-import { defListHastHandlers, remarkDefinitionList } from "remark-definition-list";
+import { defListHastHandlers } from "remark-definition-list";
 import remarkFrontmatter from "remark-frontmatter";
-import remarkGFM from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import type { Highlighter } from "shiki";
@@ -74,18 +70,12 @@ export class MarkdownToHtmlRenderer {
   private readonly proc: Processor<ASTRoot, ASTRoot, HASTRoot, undefined, undefined>;
 
   constructor(options: HtmlOptions) {
-    const markPlugins: PluginConfig<any[], ASTRoot>[] = [
+    const markPlugins: (PluginConfig<any[], ASTRoot> & { name: string })[] = [
       { plugin: remarkFrontmatter, args: [], name: "remark-frontmatter" },
-      { plugin: remarkInclude, args: [], name: "remark-include" },
-      { plugin: remarkDirective, args: [], name: "remark-directive", after: ["remark-include"] },
-      { plugin: remarkDirectiveRenderer, args: [options?.directiveRenderer], name: "mark-directive-renderer", after: ["remark-directive"] },
-      { plugin: escapeDoubleBraces, args: [], name: "mark-escape-double-braces" },
-      // @ts-expect-error
-      { plugin: remarkAttributes, args: [{ mdx: true }], name: "remark-attributes" },
       { plugin: yamlFrontmatter, args: [], name: "mark-yaml-frontmatter", after: ["remark-frontmatter"] },
       { plugin: headingData, args: [], name: "mark-heading-data" },
-      { plugin: remarkDefinitionList, args: [], name: "remark-definition-list" },
-      { plugin: remarkGFM, args: [], name: "remark-gfm" },
+      { plugin: escapeDoubleBraces, args: [], name: "mark-escape-double-braces" },
+      { plugin: remarkInclude, args: [], name: "mark-include" },
 
       ...options.remarkPlugins.map((plugin, i) => ({
         ...plugin,
@@ -93,19 +83,25 @@ export class MarkdownToHtmlRenderer {
       })),
     ];
 
+    if (markPlugins.some(plugin => plugin.name === "remark-directive")) {
+      markPlugins.push({ plugin: remarkDirectiveRenderer, args: [options?.directiveRenderer], name: "mark-directive-renderer", after: ["remark-directive"] });
+    }
+
+    const hasDefinitionList = markPlugins.some(plugin => plugin.name === "remark-definition-list");
+
     markPlugins.push({
       plugin: remarkRehype,
       args: [{
         allowDangerousHtml: options.allowDangerousHtml,
         handlers: {
-          ...defListHastHandlers,
+          ...hasDefinitionList ? defListHastHandlers : {},
         },
       }],
       name: "remark-rehype",
       after: markPlugins.map(plugin => plugin.name),
     });
 
-    const hypePlugins: PluginConfig<any[], HASTRoot>[] = [
+    const hypePlugins: (PluginConfig<any[], HASTRoot> & { name: string })[] = [
       ...options.shikiHighlighter ? [{
         plugin: rehypeVueShiki,
         name: "hype-vue-shiki",
@@ -113,21 +109,9 @@ export class MarkdownToHtmlRenderer {
           options.shikiHighlighter,
           { theme: options.shikiTheme },
         ],
-        before: ["rehype-raw"],
       }] : [],
 
-      // rehype-raw lowercases tag names. Always and forever.
-      // See https://github.com/inikulin/parse5/issues/116,
-      // https://github.com/inikulin/parse5/issues/214.
-      { plugin: rehypeRaw, args: [], name: "rehype-raw" },
-
-      ...options.shikiHighlighter ? [{
-        plugin: rehypeVueShiki.afterRaw,
-        args: [],
-        name: "hype-vue-shiki-after-raw",
-      }] : [],
-
-      ...options.remarkPlugins.map((plugin, i) => ({
+      ...options.rehypePlugins.map((plugin, i) => ({
         ...plugin,
         name: plugin.name ?? `_hype${i}`,
       })),
@@ -139,10 +123,7 @@ export class MarkdownToHtmlRenderer {
           unwrapTags: ["img", ".*-.*"],
         }],
         name: "hype-unparagraph",
-        after: ["rehype-raw"],
       },
-
-      { plugin: rehypeSlug, args: [], name: "rehype-slug", after: ["rehype-raw"] },
 
       ...options.linkComponent !== "a" ? [{
         plugin: routerLink,
@@ -150,6 +131,22 @@ export class MarkdownToHtmlRenderer {
         name: "hype-router-link",
       }] : [],
     ];
+
+    // rehype-raw lowercases tag names. Always and forever.
+    // See https://github.com/inikulin/parse5/issues/116,
+    // https://github.com/inikulin/parse5/issues/214.
+    //
+    // This interferes with the PascalCasing of Vue components, so
+    // always use kebab-case before this runs.
+    //
+    // Since this is mainly a fix-up for Markdown plumbing, we
+    // implicitly run this before allHTML plugins.
+    hypePlugins.splice(0, 0, {
+      plugin: rehypeRaw,
+      args: [],
+      name: "rehype-raw",
+      before: hypePlugins.map(plugin => plugin.name),
+    });
 
     hypePlugins.push({
       plugin: rehypeStringify,
