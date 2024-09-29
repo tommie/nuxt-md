@@ -13,9 +13,11 @@ const routes = useRouter().getRoutes();
     <nav>
       <b>Navigation</b>
 
-      <div v-for="route in routes" :key="route.name">
-        {{ route.path }} {{ route.meta }}
-      </div>
+      <menu>
+        <li v-for="route in routes" :key="route.name">
+          <NuxtLink :to="route.path" >{{ route.meta.title ?? route.meta.headingTitle }}</NuxtLink>
+        </li>
+      </menu>
     </nav>
 
     <main>
@@ -37,5 +39,23 @@ const routes = useRouter().getRoutes();
     top: 0;
     width: 20rem;
     padding: 1rem 1rem;
+  }
+
+  menu {
+    list-style-type: none;
+  }
+
+  menu > li:has(a.router-link-active) {
+    font-weight: bold;
+  }
+
+  menu > li > a:link,
+  menu > li > a:active,
+  menu > li > a:visited {
+    text-decoration: none;
+  }
+
+  menu > li > a:hover {
+    text-decoration: underline;
   }
 </style>

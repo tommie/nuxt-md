@@ -54,7 +54,7 @@
     "@types/node": "latest",
     "changelogen": "^0.5.7",
     "eslint": "^9.11.0",
-    "nuxt": "^3.13.0",
+    "nuxt": "^3.13.2",
     "prettier": "^3.3.3",
     "typescript": "latest",
     "vitest": "^2.1.1",
