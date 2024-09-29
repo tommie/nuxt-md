@@ -7,16 +7,16 @@
 
 Use `pages/*.md` files seamlessly together with `pages/*.vue` files.
 
-- [✨ &nbsp;Release Notes](/CHANGELOG.md)
-- [🏀 Online playground](https://stackblitz.com/github/itergia/nuxt-md?file=playground%2Fapp.vue)
+<!-- - [✨ &nbsp;Release Notes](/CHANGELOG.md) -->
+<!-- - [🏀 Online playground](https://stackblitz.com/github/itergia/nuxt-md?file=playground%2Fapp.vue) -->
 <!-- - [📖 &nbsp;Documentation](https://example.com) -->
 
 ## Features
 
 <!-- Highlight some of the features your module provide here -->
-- ⛰ &nbsp;Foo
-- 🚠 &nbsp;Bar
-- 🌲 &nbsp;Baz
+- ⛰ &nbsp;Mix Vue SFC and Markdown
+- 🚠 &nbsp;Works with `useRouter().getRoutes()` for easy navigation menus
+- 🌲 &nbsp;Hot reload your Markdown
 
 If [VitePress](https://vitepress.dev/) feels too limited and [Nuxt Content](https://content.nuxt.com/) does too much, then this is your golden middleground.
 
