@@ -28,14 +28,11 @@ Install the module to your Nuxt application with one command:
 npx nuxi module add nuxt-md
 ```
 
-You must disable [`experimental.scanPageMeta`](https://nuxt.com/docs/api/nuxt-config#scanpagemeta) for page metadata to be populated in `useRouter()` and `useHead()`.
-See https://github.com/nuxt/nuxt/issues/29218.
-
-That's it! You can now use nuxt-md in your Nuxt app ✨
+That's it! You can now use Markdown for your Nuxt pages ✨
 
 ## How does it work?
 
-It is a Vite plugin that uses [remark](https://github.com/remarkjs/remark) and [rehype](https://github.com/rehypejs/rehype) to convert the page to HTML, and then wraps it as a Vue single-file component (SFC).
+It is a Vite loader plugin that uses [remark](https://github.com/remarkjs/remark) and [rehype](https://github.com/rehypejs/rehype) to convert the page to HTML, and then wraps it as a Vue single-file component (SFC).
 Vue, Vite and Nuxt takes over the processing from there.
 
 ## Contribution

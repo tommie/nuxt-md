@@ -50,6 +50,9 @@ export default defineNuxtModule({
   async setup(options: MDPagesOptions, nuxt) {
     nuxt.options.extensions.push(".md");
 
+    // See https://github.com/nuxt/nuxt/issues/29218.
+    nuxt.options.experimental.scanPageMeta = false;
+
     const copts: ComponentsOptions =
       typeof nuxt.options.components === "object" && !Array.isArray(nuxt.options.components)
         ? nuxt.options.components
