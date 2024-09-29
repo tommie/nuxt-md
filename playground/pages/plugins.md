@@ -30,11 +30,11 @@ mark-escape-double-braces
 
 ### Integrated Rehype
 
+[rehype-raw](https://github.com/rehypejs/rehype-raw)
+: plumbs through raw HTML from Markdown.
+
 hype-vue-shiki
 : a custom plugin to use [Shiki](https://shiki.matsu.io/) for syntax highlighting in code blocks.
-
-[rehype-raw](https://github.com/rehypejs/rehype-raw)
-: plumbs through raw HTML.
 
 hype-unparagraph
 : a custom plugin based on [remark-unwrap-images](https://github.com/remarkjs/remark-unwrap-images), but ported to the HTML side so it can clean up after `rehype-raw` too.
@@ -52,6 +52,10 @@ These plugins are generally useful, but are not included by default:
 
 [remark-attributes](https://github.com/manuelmeister/remark-attributes)
 : parses `{.font-ultrabold}{target=_blank}` and similar syntax for adding HTML attributes.
+
+[remark-definition-list](https://github.com/wataru-chocola/remark-definition-list)
+: creates term-description lists (like on this page.)
+  Adding this also adds the required `defListHastHandlers` to `remark-rehype`.
 
 [remark-directive](https://github.com/remarkjs/remark-directive)
 : parses `:stuff[more]` (inline) and `:::stuff <NL> more <NL> :::` (block) directives, useful for call-outs.
